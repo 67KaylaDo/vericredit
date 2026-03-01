@@ -1,0 +1,22 @@
+{
+  "features": [
+    "age",
+    "income",
+    "bureau_score",
+    "credit_history_months",
+    "typing_entropy",
+    "mouse_entropy",
+    "device_risk",
+    "vpn_flag",
+    "liveness_score",
+    "doc_quality",
+    "app_velocity",
+    "recent_ring_activity",
+    "loan_amount",
+    "dti"
+  ],
+  "target": "is_synthetic_fraud",
+  "threshold": 0.45244724917030726,
+  "model": "RandomForestClassifier",
+  "train_ratio_time_split": 0.75
+}
