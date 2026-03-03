@@ -3,7 +3,7 @@ import hmac
 import hashlib
 import sqlite3
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -22,15 +22,20 @@ ORACLE_SECRET = b"DEV_ONLY_CHANGE_ME"
 
 # Review policy (governance knobs)
 ESCALATION_LOW = 0.60
-ESCALATION_HIGH = 0.80
-AHP_BLOCK_THRESHOLD = 60.0         # if AHP score >= 60 => block
-MIN_REVIEWS_FOR_CONSENSUS = 2      # require >=2 reviewers for AHP finalization
+ESCALATION_HIGH = 0.75
+AHP_BLOCK_THRESHOLD = 60.0
+MIN_REVIEWS_FOR_CONSENSUS = 2
 
 app = FastAPI(title="VeriCredit MVP API", version="1.0")
 
+
+# ----------------------------
+# Pydantic Models
+# ----------------------------
 class ApplicationIn(BaseModel):
     applicant_id: str
     features: Dict[str, float]
+
 
 class ScoreOut(BaseModel):
     applicant_id: str
@@ -42,6 +47,7 @@ class ScoreOut(BaseModel):
     explanation_top: Dict[str, float]
     needs_human_review: bool
 
+
 class AttestIn(BaseModel):
     identity_hash: str
     final_decision: str
@@ -49,10 +55,12 @@ class AttestIn(BaseModel):
     ahp_score: Optional[float] = None
     evidence_payload: Dict[str, Any]
 
+
 class AttestOut(BaseModel):
     evidence_hash: str
     oracle_signature: str
     issued_at: str
+
 
 class ReviewIn(BaseModel):
     identity_hash: str
@@ -60,12 +68,17 @@ class ReviewIn(BaseModel):
     review_score: int = Field(..., ge=1, le=9, description="1=approve ... 9=block")
     notes: Optional[str] = ""
 
+
 class FinalizeOut(BaseModel):
     identity_hash: str
     ahp_score: float
     final_decision: str
     reviews_count: int
 
+
+# ----------------------------
+# DB Setup
+# ----------------------------
 def connect_db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.execute("""
@@ -94,14 +107,20 @@ def connect_db():
     conn.commit()
     return conn
 
+
 CONN = connect_db()
 
 with open(SCHEMA_PATH, "r") as f:
     SCHEMA = json.load(f)
+
 FEATURES = SCHEMA["features"]
 THRESHOLD = float(SCHEMA["threshold"])
 MODEL = load(MODEL_PATH)
 
+
+# ----------------------------
+# Utilities
+# ----------------------------
 def stable_identity_hash(applicant_id: str, features: Dict[str, float]) -> str:
     canonical = {
         "applicant_id": applicant_id,
@@ -110,13 +129,62 @@ def stable_identity_hash(applicant_id: str, features: Dict[str, float]) -> str:
     payload = json.dumps(canonical, separators=(",", ":"), sort_keys=True).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
-def model_explain_global() -> Dict[str, float]:
-    clf = MODEL.named_steps["clf"]
+
+def _unwrap_to_pipeline_or_estimator(model_obj):
+    """
+    Supports:
+    - Pipeline(...)
+    - CalibratedClassifierCV(estimator=Pipeline(...), cv="prefit")
+    Returns the underlying fitted estimator (often a Pipeline).
+    """
+    # If it's already a Pipeline-like object with named_steps
+    if hasattr(model_obj, "named_steps"):
+        return model_obj
+
+    # If it's a calibrated model, try to access underlying estimator
+    # CalibratedClassifierCV fitted has calibrated_classifiers_
+    if hasattr(model_obj, "calibrated_classifiers_") and model_obj.calibrated_classifiers_:
+        cc = model_obj.calibrated_classifiers_[0]
+        # _CalibratedClassifier has .estimator (sklearn internal)
+        if hasattr(cc, "estimator"):
+            return cc.estimator
+
+    # Fallback: return as-is
+    return model_obj
+
+
+def model_explain_global(top_k: int = 6) -> Dict[str, float]:
+    """
+    Global explanation:
+    - RandomForest: feature_importances_
+    - LogisticRegression: abs(coef_)
+    Works whether MODEL is Pipeline or CalibratedClassifierCV(Pipeline).
+    """
+    base = _unwrap_to_pipeline_or_estimator(MODEL)
+
+    # If it's a pipeline, extract classifier at the end
+    clf = None
+    if hasattr(base, "named_steps") and "clf" in base.named_steps:
+        clf = base.named_steps["clf"]
+    else:
+        clf = base  # maybe it's directly an estimator
+
+    # RF importances
     importances = getattr(clf, "feature_importances_", None)
-    if importances is None:
-        return {}
-    pairs = sorted(zip(FEATURES, importances), key=lambda x: x[1], reverse=True)[:6]
-    return {k: float(v) for k, v in pairs}
+    if importances is not None:
+        pairs = sorted(zip(FEATURES, importances), key=lambda x: x[1], reverse=True)[:top_k]
+        return {k: float(v) for k, v in pairs}
+
+    # Logistic regression coefficients
+    coef = getattr(clf, "coef_", None)
+    if coef is not None:
+        # Binary case: shape (1, n_features)
+        weights = np.abs(coef).ravel()
+        pairs = sorted(zip(FEATURES, weights), key=lambda x: x[1], reverse=True)[:top_k]
+        return {k: float(v) for k, v in pairs}
+
+    return {}
+
 
 def upsert_case(identity_hash: str, ai_risk_score: int, prob: float, model_decision: str, needs_human: bool):
     CONN.execute("""
@@ -142,6 +210,10 @@ def upsert_case(identity_hash: str, ai_risk_score: int, prob: float, model_decis
     ))
     CONN.commit()
 
+
+# ----------------------------
+# API Endpoints
+# ----------------------------
 @app.post("/score", response_model=ScoreOut)
 def score(app_in: ApplicationIn):
     missing = [f for f in FEATURES if f not in app_in.features]
@@ -149,10 +221,14 @@ def score(app_in: ApplicationIn):
         raise HTTPException(status_code=400, detail=f"Missing features: {missing}")
 
     x = pd.DataFrame([{f: float(app_in.features[f]) for f in FEATURES}])
+
+    # Works for Pipeline and CalibratedClassifierCV
     prob = float(MODEL.predict_proba(x)[:, 1][0])
     ai_risk_score = int(round(prob * 100))
 
     model_decision = "block" if prob >= THRESHOLD else "approve"
+
+    # Review band only (note: > ESCALATION_HIGH = no review)
     needs_human = (ESCALATION_LOW <= prob <= ESCALATION_HIGH)
 
     identity_hash = stable_identity_hash(app_in.applicant_id, app_in.features)
@@ -168,6 +244,7 @@ def score(app_in: ApplicationIn):
         explanation_top=model_explain_global(),
         needs_human_review=needs_human
     )
+
 
 @app.get("/cases/pending")
 def pending_cases():
@@ -190,6 +267,7 @@ def pending_cases():
         for r in rows
     ]
 
+
 @app.get("/reviews/{identity_hash}")
 def get_reviews(identity_hash: str):
     cur = CONN.execute("""
@@ -204,9 +282,9 @@ def get_reviews(identity_hash: str):
         for r in rows
     ]
 
+
 @app.post("/reviews/submit")
 def submit_review(r: ReviewIn):
-    # must exist as a case
     cur = CONN.execute("SELECT identity_hash FROM cases WHERE identity_hash=?", (r.identity_hash,))
     if cur.fetchone() is None:
         raise HTTPException(status_code=404, detail="Case not found. Score it first via /score.")
@@ -224,6 +302,7 @@ def submit_review(r: ReviewIn):
     CONN.commit()
     return {"status": "ok"}
 
+
 def compute_ahp_for_case(identity_hash: str) -> Optional[float]:
     cur = CONN.execute("""
       SELECT reviewer, identity_hash, review_score
@@ -238,9 +317,9 @@ def compute_ahp_for_case(identity_hash: str) -> Optional[float]:
     scores = ahp_consensus(df, score_column="review_score")
     return float(scores.get(identity_hash))
 
+
 @app.post("/cases/finalize", response_model=FinalizeOut)
 def finalize_case(identity_hash: str):
-    # count reviews
     cur = CONN.execute("SELECT COUNT(*) FROM reviews WHERE identity_hash=?", (identity_hash,))
     count = int(cur.fetchone()[0])
 
@@ -267,8 +346,10 @@ def finalize_case(identity_hash: str):
         reviews_count=count
     )
 
+
 def oracle_sign(message_bytes: bytes) -> str:
     return hmac.new(ORACLE_SECRET, message_bytes, hashlib.sha256).hexdigest()
+
 
 @app.post("/oracle/attest", response_model=AttestOut)
 def attest(a: AttestIn):
