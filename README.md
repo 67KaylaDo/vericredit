@@ -1,196 +1,305 @@
-# 🏦 VeriCredit — AI + Human Consensus + Blockchain for Financial & Credit Risk
+# VeriCredit — Fraud & Credit Risk Governance Platform
 
-VeriCredit is a Financial & Credit Risk verification platform that combines:
-
-- 🤖 AI/ML credit risk scoring  
-- 👩‍⚖️ Human-in-the-loop consensus (AHP-based)  
-- 🔐 Cryptographic oracle attestation  
-- ⛓ Blockchain anchoring for auditability  
-
-The system is designed to reduce fraud, improve explainability, and provide tamper-proof decision logs across the EU financial ecosystem.
+**Course:** Risk and Fraud Analytics  
+**Group:** Group 8  
+**Institution:** IE University  
+**Project Type:** Academic Group Project
 
 ---
 
-# 🚨 Problem
+# Overview
 
-Financial institutions face increasing:
+VeriCredit is a fraud detection and governance platform designed for digital lending workflows.
 
-- Synthetic identity fraud  
-- Application manipulation  
-- Model opacity & explainability issues  
-- Regulatory pressure (EU AI Act, GDPR)  
-- Lack of immutable audit trails  
+The system combines:
 
-AI models alone are not enough.  
-Human-only review is slow and expensive.  
-Traditional systems lack tamper-proof evidence.
+- Machine learning fraud detection
+- Human-in-the-loop review
+- Consensus decision mechanisms
+- Cryptographic decision attestation
 
----
-
-# 💡 Solution: VeriCredit
-
-VeriCredit introduces a hybrid architecture:
-
-1. AI model generates risk score + explanation  
-2. Borderline cases escalate to human reviewers  
-3. AHP consensus aggregates human judgments  
-4. Oracle generates cryptographic evidence hash  
-5. Smart contract anchors decision on-chain  
-
-This creates:
-
-- Transparent risk scoring  
-- Human oversight  
-- Immutable audit records  
-- Compliance-ready traceability  
+The goal of the platform is to reduce synthetic identity fraud and application fraud in digital lending while maintaining regulatory compliance and auditability.
 
 ---
 
-# 🏗 System Architecture
+# Project Team
 
-User → Streamlit UI  
-        ↓  
-FastAPI Backend (AI + AHP + Oracle)  
-        ↓  
-Evidence Hash  
-        ↓  
-EVM Smart Contract (VeriCreditRegistry)  
+Group 8 — Risk and Fraud Analytics
 
----
-
-# 📂 Project Structure
-
-vericredit-mvp/
-
-- 01_generate_synth_data.py  
-- 02_train_model.py  
-- 03_api_oracle.py  
-- 05_ahp_engine.py  
-- streamlit_app.py  
-- artifacts/  
-- hardhat/  
-  - contracts/VeriCreditRegistry.sol  
-  - scripts/  
+- Luiza Zinca
+- Maria Bourbon
+- Thi Tue Minh Do
+- Thi Phuong Linh Do
 
 ---
 
-# ⚙️ How It Works (Step-by-Step)
+# Problem Statement
 
-## 1️⃣ Generate Synthetic Data
+Digital lenders face increasing exposure to synthetic identity fraud and automated application fraud.
 
-python 01_generate_synth_data.py
+Existing solutions typically focus on only one aspect of the problem:
 
-## 2️⃣ Train ML Model
+- KYC verification
+- Credit scoring
+- Fraud detection
 
-python 02_train_model.py
+However, few systems provide end-to-end governance including:
 
-Produces:
-- artifacts/model.joblib  
-- artifacts/feature_schema.json  
+- explainable AI decisions
+- human oversight
+- tamper-proof decision evidence
 
-## 3️⃣ Run API Backend
+VeriCredit addresses this gap by introducing a layered fraud governance architecture.
 
-python -m uvicorn 03_api_oracle:app --reload --port 8000
+---
 
-Swagger UI:
-http://127.0.0.1:8000/docs
+# System Architecture
 
-## 4️⃣ Run Streamlit UI
+The platform follows a layered architecture composed of several major components.
+
+### Data Layer
+Collects signals from loan applications including:
+
+- financial attributes
+- behavioral telemetry
+- device intelligence
+- fraud pattern indicators
+
+Examples of signals include typing entropy, mouse entropy, device risk, VPN usage, and application velocity.
+
+---
+
+### AI / ML Fraud Scoring Layer
+
+Machine learning models analyze structured financial data and behavioral signals to estimate fraud probability.
+
+The system outputs:
+
+- fraud probability
+- risk score
+- explainable feature importance indicators
+
+These outputs support transparent decision-making in financial workflows.
+
+---
+
+### Governance Layer
+
+Decision policies determine the next step in the workflow.
+
+Typical policy structure:
+
+Low risk → Approve  
+Medium risk → Human review  
+High risk → Block
+
+This ensures automated AI decisions remain governed and explainable.
+
+---
+
+### Human Review Layer
+
+Borderline cases are escalated to fraud analysts.
+
+Analysts provide:
+
+- structured review scores
+- investigation notes
+- decision recommendations
+
+Multiple reviewers may evaluate the same case.
+
+---
+
+### Consensus Layer
+
+Reviewer decisions are aggregated using an Analytic Hierarchy Process (AHP).
+
+This produces a consensus score and final decision while preventing individual reviewer bias.
+
+---
+
+### Blockchain Attestation Layer
+
+Each finalized decision generates a tamper-evident evidence record.
+
+The record includes:
+
+- identity hash
+- risk score
+- final decision
+- timestamp
+- evidence hash
+
+In production environments, this evidence can be anchored on blockchain to ensure immutable auditability.
+
+---
+
+# Demo Application
+
+The project includes a Streamlit demo application simulating the VeriCredit fraud verification workflow.
+
+The demo demonstrates:
+
+1. AI fraud scoring
+2. Governance rule evaluation
+3. Human analyst review
+4. Consensus decision aggregation
+5. Cryptographic decision attestation
+
+---
+
+# Demo Workflow
+
+Step 1 — AI Scoring  
+The system analyzes application signals and produces a fraud probability score.
+
+Step 2 — Pending Review Queue  
+Borderline applications are placed in a human review queue.
+
+Step 3 — Human Reviews  
+Fraud analysts evaluate suspicious applications.
+
+Step 4 — Consensus Decision  
+Reviewer scores are aggregated using the AHP algorithm.
+
+Step 5 — Oracle Attestation  
+The system generates a cryptographic evidence record.
+
+---
+
+# Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Frontend | Streamlit |
+| Backend | Python |
+| Machine Learning | Scikit-learn |
+| Data Processing | Pandas / NumPy |
+| Consensus Algorithm | AHP |
+| Cryptographic Evidence | Hash-based signatures |
+| Version Control | Git / GitHub |
+
+---
+
+# Machine Learning Models
+
+The fraud scoring engine uses supervised learning models trained on structured application data.
+
+Models used in the MVP:
+
+- Random Forest
+- Logistic Regression
+
+These models are suitable for tabular financial data and allow explainable predictions.
+
+Future production versions may include:
+
+- LightGBM
+- XGBoost
+- deep learning architectures
+
+---
+
+# Running the Demo
+
+Install dependencies:
+
+pip install -r requirements.txt
+
+Run the Streamlit application:
 
 streamlit run streamlit_app.py
 
-Streamlit UI:
+Then open:
+
 http://localhost:8501
 
-## 5️⃣ Deploy Smart Contract (Local)
+---
 
-cd hardhat  
-nvm use 20  
-npx hardhat node  
+# Example Fraud Signals
 
-Deploy:
-npx hardhat run scripts/deploy.js --network localhost  
+Financial signals:
 
-Record verification:
-npx hardhat run scripts/record.js --network localhost  
+- income
+- credit history
+- loan amount
+- debt-to-income ratio
+
+Behavioral signals:
+
+- typing entropy
+- mouse entropy
+
+Device signals:
+
+- device risk
+- VPN usage
+
+Fraud pattern indicators:
+
+- application velocity
+- fraud ring activity
 
 ---
 
-# 🔐 Smart Contract: VeriCreditRegistry
+# Governance and Compliance
 
-Stores:
+VeriCredit is designed with regulatory considerations including:
 
-- identity_hash  
-- ai_risk_score  
-- ahp_score  
-- humanConsensusUsed  
-- evidence_hash  
-- timestamp  
-- reporter address  
+- EU AI Act
+- GDPR compliance
+- explainable AI requirements
 
-This ensures immutable, auditable decision logs.
+The architecture ensures:
 
----
-
-# 📊 Example Flow
-
-1. User submits loan application  
-2. AI returns risk score (e.g., 67/100)  
-3. Borderline → Human review  
-4. AHP consensus returns 70  
-5. Oracle hashes evidence payload  
-6. Smart contract stores verification record  
+- model transparency
+- human oversight
+- auditable decision records
 
 ---
 
-# 🎯 Market Opportunity
+# Repository Structure
 
-Target clients:
+VeriCredit/
 
-- Banks  
-- Digital lenders  
-- InsurTech companies  
-- FinTech platforms  
-- RegTech providers  
-
-Revenue Model:
-
-- SaaS subscription  
-- API usage pricing  
-- Compliance verification fees  
-- B2B institutional licensing  
-
----
-
-# 💶 €1M Funding Allocation (12–18 Months)
-
-AI/ML Engineering – €250k  
-Blockchain Development – €200k  
-Backend & Infrastructure – €200k  
-EU Compliance (AI Act / GDPR) – €150k  
-Data acquisition – €100k  
-Pilot deployments – €100k  
+├── 01_generate_synth_data.py  
+├── 02_train_model.py  
+├── 03_api_oracle.py  
+├── streamlit_app.py  
+├── ahp_engine.py  
+├── artifacts/  
+├── data/  
+├── contracts/  
+├── hardhat/  
+├── requirements.txt  
+└── README.md
 
 ---
 
-# 🚀 Next Steps
+# Future Improvements
 
-- Deploy API to cloud (Render / Railway)  
-- Deploy Streamlit UI to Streamlit Cloud  
-- Move smart contract to testnet (Sepolia)  
-- Add real-world credit bureau integrations  
-- Add model explainability dashboards (SHAP)  
+Possible extensions of the system include:
 
----
-
-# 👩‍💻 Author
-
-Kayla Do  
-Financial & Credit Risk — AI + Blockchain MVP  
+- real-time API integration with banking platforms
+- advanced fraud ring detection models
+- blockchain smart contract registry
+- reputation-based reviewer incentives
+- large-scale ML model monitoring
 
 ---
 
-# ⚠️ Disclaimer
+# Project Status
 
-This MVP uses synthetic data for academic and demonstration purposes.
+Prototype / MVP
+
+This repository demonstrates the core architecture and fraud governance workflow of the VeriCredit platform.
+
+---
+
+# License
+
+This project is developed as an academic group project for the Risk and Fraud Analytics course.
+
+For educational purposes only.
 
