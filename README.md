@@ -9,7 +9,6 @@ VeriCredit is a Financial & Credit Risk verification platform that combines:
 
 The system is designed to reduce fraud, improve explainability, and provide tamper-proof decision logs across the EU financial ecosystem.
 
-- Website: https://vericredit-app.streamlit.app/
 ---
 
 # 🚨 Problem
